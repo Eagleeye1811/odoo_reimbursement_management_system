@@ -4,11 +4,14 @@ import { cn } from '../../lib/utils';
 export const Avatar = ({ name, size = 'md', className }) => {
   const getInitials = (name) => {
     if (!name) return '??';
-    const parts = name.split(' ');
+    const cleanName = name.trim();
+    if (!cleanName) return '??';
+    
+    const parts = cleanName.split(' ').filter(Boolean);
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    return cleanName.substring(0, 2).toUpperCase();
   };
 
   const sizes = {

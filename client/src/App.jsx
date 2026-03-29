@@ -13,6 +13,7 @@ import { RoleRedirect } from './components/layout/RoleRedirect';
 import { UsersPage } from './pages/admin/UsersPage';
 import { RulesPage } from './pages/admin/RulesPage';
 import { AnalyticsPage } from './pages/admin/AnalyticsPage';
+import { AllExpensesPage } from './pages/admin/AllExpensesPage';
 
 // Manager Pages
 import { ApprovalQueue } from './pages/manager/ApprovalQueue';
@@ -52,6 +53,7 @@ function App() {
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/rules" element={<RulesPage />} />
               <Route path="/admin/analytics" element={<AnalyticsPage />} />
+              <Route path="/admin/all-expenses" element={<AllExpensesPage />} />
             </Route>
 
             {/* Manager Routes (Admin and Manager) */}

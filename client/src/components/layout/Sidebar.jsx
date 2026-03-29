@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Users, Shield, BarChart3, CheckSquare, Receipt, LayoutDashboard, LogOut } from 'lucide-react';
+import { Users, Shield, BarChart3, CheckSquare, Receipt, LayoutDashboard, LogOut, ClipboardList } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Avatar } from '../ui/Avatar';
 
@@ -18,6 +18,7 @@ export const Sidebar = () => {
   const menuItems = {
     admin: [
       { name: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
+      { name: 'All Expenses', path: '/admin/all-expenses', icon: ClipboardList },
       { name: 'Users & Roles', path: '/admin/users', icon: Users },
       { name: 'Approval Rules', path: '/admin/rules', icon: Shield },
       { name: 'My Expenses', path: '/employee/expenses', icon: Receipt }, /* Admins can be employees */

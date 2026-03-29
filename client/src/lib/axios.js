@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5001/api',
   withCredentials: true // For cookies
 });
 
@@ -52,7 +52,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post('http://localhost:5000/api/auth/refresh', {}, { withCredentials: true });
+        const { data } = await axios.post('http://localhost:5001/api/auth/refresh', {}, { withCredentials: true });
         
         useAuthStore.getState().setToken(data.accessToken);
         api.defaults.headers.common['Authorization'] = 'Bearer ' + data.accessToken;
