@@ -66,4 +66,32 @@ router.get(
   expenseController.getApprovalStatus
 );
 
+// ─── Manager Approvals ──────────────────────────────────────────────────────
+
+// List pending approvals for logged in user
+router.get(
+  '/manager/pending',
+  expenseController.getPendingApprovals
+);
+
+// List team expenses for logged in user
+router.get(
+  '/manager/team',
+  expenseController.getTeamExpenses
+);
+
+// Approve expense
+router.post(
+  '/:id/approve',
+  validate.idParamRule,
+  expenseController.approveExpense
+);
+
+// Reject expense
+router.post(
+  '/:id/reject',
+  validate.idParamRule,
+  expenseController.rejectExpense
+);
+
 module.exports = router;

@@ -359,6 +359,115 @@ async function listCategories() {
   ];
 }
 
+// ─── Approvals (Manager) ──────────────────────────────────────────────────────
+
+async function getPendingApprovals(userId) {
+  const result = await query(
+    `SELECT e.*, u.name AS employee_name, c.currency AS company_currency
+     FROM expenses e
+     JOIN users u ON u.id = e.employee_id
+     JOIN companies c ON c.id = e.company_id
+     WHERE e.current_approver_id = $1 AND e.status = 'pending'
+     ORDER BY e.created_at DESC`,
+    [userId]
+  );
+  return result.rows.map(row => ({
+    ...normalizeExpense(row),
+    employeeName: row.employee_name,
+  }));
+}
+
+async function getTeamExpenses(userId) {
+  // Return expenses where the user has approved/rejected in the past or where they are the current approver
+  const result = await query(
+    `SELECT DISTINCT e.*, u.name AS employee_name, c.currency AS company_currency
+     FROM expenses e
+     JOIN users u ON u.id = e.employee_id
+     JOIN companies c ON c.id = e.company_id
+     LEFT JOIN expense_approval_log log ON log.expense_id = e.id
+     WHERE e.current_approver_id = $1 OR log.actor_id = $1
+     ORDER BY e.created_at DESC LIMIT 50`,
+    [userId]
+  );
+  return result.rows.map(row => ({
+    ...normalizeExpense(row),
+    employeeName: row.employee_name,
+  }));
+}
+
+async function approveExpense(expenseId, userId, comment) {
+  const expenseResult = await query(
+    'SELECT * FROM expenses WHERE id = $1 AND current_approver_id = $2 AND status = \'pending\'',
+    [expenseId, userId]
+  );
+  if (expenseResult.rows.length === 0) {
+    throw Object.assign(new Error('Expense not found or you are not authorized to approve it'), { statusCode: 404 });
+  }
+
+  const exp = expenseResult.rows[0];
+  const chainId = exp.chain_id;
+  const currentStepIndex = exp.current_step_index;
+  let nextApproverId = null;
+
+  if (chainId) {
+    const nextStepResult = await query(
+      'SELECT * FROM approval_steps WHERE chain_id = $1 AND step_order > $2 ORDER BY step_order ASC LIMIT 1',
+      [chainId, currentStepIndex + 1]
+    );
+    if (nextStepResult.rows.length > 0) {
+      nextApproverId = nextStepResult.rows[0].approver_id;
+    }
+  }
+
+  let finalStatus = 'pending';
+  let nextStepIdx = currentStepIndex;
+
+  if (nextApproverId) {
+    nextStepIdx = currentStepIndex + 1;
+    await query(
+      `UPDATE expenses SET current_approver_id = $1, current_step_index = $2, updated_at = NOW() WHERE id = $3`,
+      [nextApproverId, nextStepIdx, expenseId]
+    );
+  } else {
+    finalStatus = 'approved';
+    await query(
+      `UPDATE expenses SET status = 'approved', current_approver_id = NULL, updated_at = NOW() WHERE id = $1`,
+      [expenseId]
+    );
+  }
+
+  await query(
+    `INSERT INTO expense_approval_log (expense_id, actor_id, action, step_index, comment)
+     VALUES ($1, $2, 'approved', $3, $4)`,
+    [expenseId, userId, currentStepIndex, comment || 'Approved by Manager']
+  );
+
+  return { id: expenseId, status: finalStatus, nextApproverId };
+}
+
+async function rejectExpense(expenseId, userId, comment) {
+  const expenseResult = await query(
+    'SELECT * FROM expenses WHERE id = $1 AND current_approver_id = $2 AND status = \'pending\'',
+    [expenseId, userId]
+  );
+  if (expenseResult.rows.length === 0) {
+    throw Object.assign(new Error('Expense not found or you are not authorized to reject it'), { statusCode: 404 });
+  }
+
+  await query(
+    `UPDATE expenses SET status = 'rejected', current_approver_id = NULL, updated_at = NOW() WHERE id = $1`,
+    [expenseId]
+  );
+
+  await query(
+    `INSERT INTO expense_approval_log (expense_id, actor_id, action, step_index, comment)
+     VALUES ($1, $2, 'rejected', $3, $4)`,
+    [expenseId, userId, expenseResult.rows[0].current_step_index, comment || 'Rejected by Manager']
+  );
+
+  return { id: expenseId, status: 'rejected' };
+}
+
 // ─── Normalizer ───────────────────────────────────────────────────────────────
 
 /**
@@ -404,4 +513,8 @@ module.exports = {
   getApprovalTrail,
   listCategories,
   getCompanyCurrency,
+  getPendingApprovals,
+  getTeamExpenses,
+  approveExpense,
+  rejectExpense,
 };

@@ -1,27 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableHeader, TableRow, TableCell, TableHead } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
-import { Search, Filter, MessageSquare, CheckCircle, XCircle, FileText } from 'lucide-react';
-
-const DUMMY_QUEUE = [
-  { id: 1, employee: 'Alice Johnson', category: 'Flights', amount: 450, currency: 'USD', inINR: '37,350', status: 'Pending Approval', date: '2023-10-24', receipt: true },
-  { id: 2, employee: 'Charlie Brown', category: 'Meals', amount: 80, currency: 'EUR', inINR: '7,200', status: 'Pending Approval', date: '2023-10-25', receipt: true },
-  { id: 3, employee: 'David Smith', category: 'Office Supplies', amount: 3500, currency: 'INR', inINR: '3,500', status: 'Pending Approval', date: '2023-10-26', receipt: false },
-];
+import { Search, Filter, MessageSquare, FileText } from 'lucide-react';
+import { getManagerApprovals, approveManagerExpense, rejectManagerExpense } from '../../lib/expenseApi';
 
 export const ApprovalQueue = () => {
   const [expandedId, setExpandedId] = useState(null);
-  const [items, setItems] = useState(DUMMY_QUEUE);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleAction = (id, action) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, status: action === 'approve' ? 'Approved' : 'Rejected' } : item
-    ));
-    setExpandedId(null);
+  useEffect(() => {
+    const fetchApprovals = async () => {
+      try {
+        const data = await getManagerApprovals();
+        setItems(data);
+      } catch (err) {
+        console.error('Failed to load approvals:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApprovals();
+  }, []);
+
+  const handleAction = async (id, action) => {
+    try {
+      if (action === 'approve') {
+        await approveManagerExpense(id, 'Approved');
+      } else {
+        await rejectManagerExpense(id, 'Rejected');
+      }
+      setItems(items.map(item => 
+        item.id === id ? { ...item, status: action === 'approve' ? 'APPROVED' : 'REJECTED' } : item
+      ));
+      setExpandedId(null);
+    } catch (err) {
+      console.error('Failed to action expense:', err);
+    }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-text-secondary">Loading approvals...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -34,120 +57,130 @@ export const ApprovalQueue = () => {
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Employee</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <tbody>
-          {items.map((item) => (
-            <React.Fragment key={item.id}>
-              <TableRow 
-                expandable 
-                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                className={item.status !== 'Pending Approval' ? 'opacity-50 pointer-events-none' : ''}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={item.employee} size="md" />
-                    <span className="font-medium text-text-primary">{item.employee}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="text-text-secondary">{item.category}</span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-primary font-bold">₹{item.inINR}</span>
-                    <span className="text-xs text-text-secondary">{item.amount} {item.currency}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge status={item.status === 'Approved' ? 'approved' : item.status === 'Rejected' ? 'rejected' : 'pending'}>
-                    {item.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {item.status === 'Pending Approval' ? (
-                    <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                       <Button size="icon" variant="ghost" className="text-error hover:bg-red-50" onClick={() => handleAction(item.id, 'reject')}>
-                         <XCircle className="h-5 w-5" />
-                       </Button>
-                       <Button size="icon" variant="primary" className="bg-success hover:bg-green-600" onClick={() => handleAction(item.id, 'approve')}>
-                         <CheckCircle className="h-5 w-5" />
-                       </Button>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-text-secondary italic">Completed</span>
-                  )}
+      <div className="bg-surface rounded-xl overflow-hidden border border-border">
+        <h3 className="text-lg font-semibold text-text-primary px-6 py-4 border-b border-border">
+          Approvals to review
+        </h3>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-background">
+              <TableHead>Approval Subject</TableHead>
+              <TableHead>Request Owner</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Request Status</TableHead>
+              <TableHead>Total amount (in company's currency)</TableHead>
+              <TableHead className="text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <tbody>
+            {items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-text-secondary italic">
+                  No approvals pending
                 </TableCell>
               </TableRow>
-
-              {expandedId === item.id && (
-                <tr className="bg-gray-50 border-b border-border">
-                  <td colSpan={5} className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div>
-                        <h4 className="text-sm font-semibold text-text-primary mb-3">Expense Details</h4>
-                        <div className="bg-surface border border-border rounded-xl p-4 space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-text-secondary">Date</span>
-                            <span className="font-medium text-text-primary">{item.date}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-text-secondary">Receipt</span>
-                            {item.receipt ? (
-                              <a href="#" className="flex items-center text-primary hover:underline">
-                                <FileText className="h-4 w-4 mr-1" /> View Receipt
-                              </a>
-                            ) : (
-                              <span className="text-text-secondary italic">No receipt attached</span>
-                            )}
-                          </div>
-                        </div>
+            ) : items.map((item) => {
+              const symbol = item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : item.currency === 'GBP' ? '£' : item.currency;
+              const isReadOnly = item.status !== 'PENDING';
+              return (
+                <React.Fragment key={item.id}>
+                  <TableRow 
+                    expandable 
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    className={isReadOnly ? 'opacity-70 pointer-events-none' : ''}
+                  >
+                    <TableCell>
+                      <span className="font-medium text-text-primary">{item.description || 'none'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar name={item.employeeName} size="sm" />
+                        <span className="font-medium text-text-primary">{item.employeeName}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-text-secondary">{item.category}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge status={item.status === 'APPROVED' ? 'approved' : item.status === 'REJECTED' ? 'rejected' : 'pending'}>
+                        {item.status || 'Pending'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-error font-medium">
+                          {item.amount} {symbol} (in {item.companyCurrency})
+                        </span>
+                        <span className="text-text-primary font-bold">
+                          = {item.convertedAmount}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {!isReadOnly && (
+                        <div className="flex items-center justify-end gap-3" onClick={e => e.stopPropagation()}>
+                           <Button 
+                             onClick={() => handleAction(item.id, 'approve')}
+                             className="bg-transparent border border-success text-success hover:bg-success hover:text-white px-5 py-1.5 h-auto text-sm rounded-full transition-colors"
+                           >
+                             Approve
+                           </Button>
+                           <Button 
+                             onClick={() => handleAction(item.id, 'reject')}
+                             className="bg-transparent border border-error text-error hover:bg-error hover:text-white px-5 py-1.5 h-auto text-sm rounded-full transition-colors"
+                           >
+                             Reject
+                           </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
 
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-semibold text-text-primary mb-3">Approval Timeline</h4>
-                        <div className="space-y-4 bg-surface border border-border p-4 rounded-xl">
-                          <div className="flex gap-3">
-                            <div className="flex flex-col items-center">
-                              <div className="w-2 h-2 rounded-full bg-success"></div>
-                              <div className="w-0.5 h-full bg-border my-1"></div>
-                            </div>
-                            <div className="pb-2">
-                              <p className="text-sm font-medium">Submitted by {item.employee}</p>
-                              <p className="text-xs text-text-secondary">{item.date}</p>
+                  {expandedId === item.id && (
+                    <tr className="bg-background border-b border-border">
+                      <td colSpan={6} className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div>
+                            <h4 className="text-sm font-semibold text-text-primary mb-3">Expense Details</h4>
+                            <div className="bg-surface border border-border rounded-xl p-4 space-y-3">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-text-secondary">Date</span>
+                                <span className="font-medium text-text-primary">
+                                  {new Date(item.date).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-text-secondary">Receipt</span>
+                                {item.receiptUrl ? (
+                                  <a href={item.receiptUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
+                                    <FileText className="h-4 w-4 mr-1" /> View Receipt
+                                  </a>
+                                ) : (
+                                  <span className="text-text-secondary italic">No receipt attached</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex gap-3">
-                            <div className="flex flex-col items-center">
-                              <div className="w-2 h-2 rounded-full bg-amber-500 ring-4 ring-amber-100"></div>
-                            </div>
+
+                          <div className="space-y-4">
+                            <h4 className="text-sm font-semibold text-text-primary mb-3">Quick Action</h4>
                             <div>
-                              <p className="text-sm font-medium">Pending Manager Approval</p>
-                              <p className="text-xs text-text-secondary">Waiting for you</p>
+                               <Input placeholder="Add a comment before actioning..." icon={MessageSquare} />
+                            </div>
+                            <div className="text-xs text-text-secondary mt-2">
+                              Once the expense is approved/rejected by manager that record becomes readonly, the status is set in request status field and the buttons become invisible.
                             </div>
                           </div>
                         </div>
-
-                        <div>
-                           <Input placeholder="Add a comment (optional)..." icon={MessageSquare} />
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </Table>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </Table>
+      </div>
     </div>
   );
 };

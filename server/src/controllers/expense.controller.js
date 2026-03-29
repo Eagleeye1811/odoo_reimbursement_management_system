@@ -142,6 +142,60 @@ async function uploadReceipt(req, res) {
   }
 }
 
+/**
+ * GET /api/expenses/manager/pending – Get expenses pending for manager approval
+ */
+async function getPendingApprovals(req, res) {
+  try {
+    const expenses = await expenseService.getPendingApprovals(req.user.id);
+    return success(res, { expenses }, 'Pending approvals retrieved');
+  } catch (err) {
+    console.error('getPendingApprovals error:', err);
+    return error(res, err.message, err.statusCode || 500);
+  }
+}
+
+/**
+ * GET /api/expenses/manager/team – Get team expenses for manager
+ */
+async function getTeamExpenses(req, res) {
+  try {
+    const expenses = await expenseService.getTeamExpenses(req.user.id);
+    return success(res, { expenses }, 'Team expenses retrieved');
+  } catch (err) {
+    console.error('getTeamExpenses error:', err);
+    return error(res, err.message, err.statusCode || 500);
+  }
+}
+
+/**
+ * POST /api/expenses/:id/approve – Manager approves expense
+ */
+async function approveExpense(req, res) {
+  try {
+    const { comment } = req.body;
+    const result = await expenseService.approveExpense(req.params.id, req.user.id, comment);
+    return success(res, result, 'Expense approved');
+  } catch (err) {
+    console.error('approveExpense error:', err);
+    return error(res, err.message, err.statusCode || 500);
+  }
+}
+
+/**
+ * POST /api/expenses/:id/reject – Manager rejects expense
+ */
+async function rejectExpense(req, res) {
+  try {
+    const { comment } = req.body;
+    const result = await expenseService.rejectExpense(req.params.id, req.user.id, comment);
+    return success(res, result, 'Expense rejected');
+  } catch (err) {
+    console.error('rejectExpense error:', err);
+    return error(res, err.message, err.statusCode || 500);
+  }
+}
+
 module.exports = {
   createExpense,
   listExpenses,
@@ -151,4 +205,8 @@ module.exports = {
   submitExpense,
   getApprovalStatus,
   uploadReceipt,
+  getPendingApprovals,
+  getTeamExpenses,
+  approveExpense,
+  rejectExpense,
 };

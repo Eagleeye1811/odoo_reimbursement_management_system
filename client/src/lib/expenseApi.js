@@ -35,6 +35,26 @@ export const deleteExpense = async (id) => {
   return data.data;
 };
 
+export const getManagerApprovals = async () => {
+  const { data } = await api.get('/expenses/manager/pending');
+  return data.data?.expenses || data.data || [];
+};
+
+export const getTeamExpenses = async () => {
+  const { data } = await api.get('/expenses/manager/team');
+  return data.data?.expenses || data.data || [];
+};
+
+export const approveManagerExpense = async (id, comment) => {
+  const { data } = await api.post(`/expenses/${id}/approve`, { comment });
+  return data.data;
+};
+
+export const rejectManagerExpense = async (id, comment) => {
+  const { data } = await api.post(`/expenses/${id}/reject`, { comment });
+  return data.data;
+};
+
 export const getApprovalStatus = async (id) => {
   const { data } = await api.get(`/expenses/${id}/approval-status`);
   return data.data; // Array of approval steps
