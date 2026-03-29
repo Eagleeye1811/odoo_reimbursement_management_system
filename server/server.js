@@ -11,7 +11,7 @@ const adminRoutes = require('./src/routes/admin.routes');
 const { getDb } = require('./src/utils/db');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174'],

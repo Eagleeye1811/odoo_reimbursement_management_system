@@ -11,11 +11,11 @@ const transporter = nodemailer.createTransport({
 async function sendUserCredentials(email, password) {
   try {
     await transporter.sendMail({
-      from: '"ReimburseHQ" <no-reply@reimbursehq.com>',
+      from: '"ClaimFlow" <no-reply@claimflow.com>',
       to: email,
       subject: "Your Account Credentials",
       html: `
-        <h3>Welcome to ReimburseHQ</h3>
+        <h3>Welcome to ClaimFlow</h3>
         <p>Your account has been created.</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Password:</strong> ${password}</p>

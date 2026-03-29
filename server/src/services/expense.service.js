@@ -362,14 +362,17 @@ async function listCategories() {
 // ─── Approvals (Manager) ──────────────────────────────────────────────────────
 
 async function getPendingApprovals(userId) {
+  const userRes = await query(`SELECT company_id FROM users WHERE id = $1`, [userId]);
+  const companyId = userRes.rows[0]?.company_id;
+
   const result = await query(
     `SELECT e.*, u.name AS employee_name, c.currency AS company_currency
      FROM expenses e
      JOIN users u ON u.id = e.employee_id
      JOIN companies c ON c.id = e.company_id
-     WHERE e.current_approver_id = $1 AND e.status = 'pending'
+     WHERE e.company_id = $1
      ORDER BY e.created_at DESC`,
-    [userId]
+    [companyId]
   );
   return result.rows.map(row => ({
     ...normalizeExpense(row),
@@ -378,14 +381,14 @@ async function getPendingApprovals(userId) {
 }
 
 async function getTeamExpenses(userId) {
-  // Return expenses where the user has approved/rejected in the past or where they are the current approver
+  // Return expenses where the user is the explicit employee's manager, has approved/rejected in the past, or is the current approver
   const result = await query(
     `SELECT DISTINCT e.*, u.name AS employee_name, c.currency AS company_currency
      FROM expenses e
      JOIN users u ON u.id = e.employee_id
      JOIN companies c ON c.id = e.company_id
      LEFT JOIN expense_approval_log log ON log.expense_id = e.id
-     WHERE e.current_approver_id = $1 OR log.actor_id = $1
+     WHERE u.manager_id = $1 OR e.current_approver_id = $1 OR log.actor_id = $1
      ORDER BY e.created_at DESC LIMIT 50`,
     [userId]
   );

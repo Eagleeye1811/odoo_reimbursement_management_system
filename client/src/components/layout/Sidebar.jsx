@@ -38,7 +38,7 @@ export const Sidebar = () => {
     <aside className="w-[220px] bg-surface h-screen border-r border-border flex flex-col fixed left-0 top-0">
       <div className="h-16 flex shrink-0 items-center px-6 border-b border-border">
         <LayoutDashboard className="h-6 w-6 text-primary mr-2" />
-        <span className="font-bold text-lg text-text-primary tracking-tight">Reimburse</span>
+        <span className="font-bold text-lg text-text-primary tracking-tight">ClaimFlow</span>
       </div>
 
       <div className="flex-1 py-6 px-4 flex flex-col gap-2 overflow-y-auto">
