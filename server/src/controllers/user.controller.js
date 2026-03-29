@@ -18,7 +18,11 @@ const userSchema = z.object({
 async function createUser(req, res) {
   try {
     const data = userSchema.parse(req.body);
-    const companyId = req.user.companyId;
+    const companyId = req.user.companyId || req.user.company_id;
+
+    if (!companyId) {
+      return res.status(400).json({ message: 'Missing company ID in token. Please login again.' });
+    }
 
     const existing = await query('SELECT id FROM users WHERE email = $1', [data.email]);
     if (existing.rows.length > 0) {
@@ -28,11 +32,13 @@ async function createUser(req, res) {
     const tempPassword = generatePassword();
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
+    const finalManagerId = data.role === 'employee' ? (data.manager_id || null) : null;
+
     const result = await query(
       `INSERT INTO users (company_id, name, email, password_hash, role, manager_id)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, company_id, name, email, role, manager_id`,
-      [companyId, data.name, data.email, hashedPassword, data.role, data.manager_id || null]
+      [companyId, data.name, data.email, hashedPassword, data.role, finalManagerId]
     );
     const newUser = result.rows[0];
 
@@ -47,7 +53,7 @@ async function createUser(req, res) {
   } catch (error) {
     if (error instanceof z.ZodError) return res.status(400).json({ errors: error.errors });
     console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error: ' + error.message, stack: error.stack });
   }
 }
 
@@ -80,9 +86,14 @@ async function updateUser(req, res) {
     if (!existing.rows.length) return res.status(404).json({ message: 'User not found' });
     if (existing.rows[0].role === 'admin') return res.status(403).json({ message: 'Cannot modify admin' });
 
+    const finalRole = role || existing.rows[0].role;
+    const finalManagerId = finalRole === 'employee' 
+      ? (manager_id !== undefined ? manager_id : existing.rows[0].manager_id) 
+      : null;
+
     await query(
-      `UPDATE users SET role = COALESCE($1, role), manager_id = $2, updated_at = NOW() WHERE id = $3`,
-      [role || null, manager_id || null, id]
+      `UPDATE users SET role = $1, manager_id = $2, updated_at = NOW() WHERE id = $3`,
+      [finalRole, finalManagerId || null, id]
     );
 
     res.json({ message: 'User updated successfully' });

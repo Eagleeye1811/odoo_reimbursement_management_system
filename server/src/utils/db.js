@@ -93,7 +93,7 @@ async function getDb() {
     );
   `);
   console.log('✅ NeonDB tables ready');
-  return { query };
+  return { query, pool };
 }
 
-module.exports = { getDb, query };
+module.exports = { getDb, query, pool };

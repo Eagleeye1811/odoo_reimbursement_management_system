@@ -8,6 +8,7 @@ dotenv.config();
 const authRoutes = require('./src/routes/auth.routes');
 const userRoutes = require('./src/routes/user.routes');
 const adminRoutes = require('./src/routes/admin.routes');
+const approvalRoutes = require('./modules/approvals/routes');
 const { getDb } = require('./src/utils/db');
 
 const app = express();
@@ -28,6 +29,7 @@ getDb()
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'healthy', timestamp: new Date() }));
 
