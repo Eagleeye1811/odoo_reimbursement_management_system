@@ -29,14 +29,16 @@ app.get('/api/manager/approvals', (req, res) => {
   res.json({ message: 'List of approvals' });
 });
 
-// Employee Routes
-app.get('/api/employee/expenses', (req, res) => {
-  res.json({ message: 'List of expenses' });
+// Mock Authentication Middleware (As per instructions)
+app.use((req, res, next) => {
+  // Inject mock user
+  req.user = { id: "user_123", role: "EMPLOYEE", companyId: "company_123" };
+  next();
 });
 
-app.post('/api/employee/expenses', (req, res) => {
-  res.status(201).json({ message: 'Expense created successfully', data: req.body });
-});
+// Mount modular Employee Routes & Utility Routes
+app.use('/api/expenses', require('./src/routes/expense.routes'));
+app.use('/api', require('./src/routes/utility.routes')); // Mounts /api/categories & /api/currencies
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
