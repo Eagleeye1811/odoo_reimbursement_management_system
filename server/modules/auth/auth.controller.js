@@ -92,6 +92,9 @@ async function registerCompany(req, res) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.errors });
     }
+    if (error.code === 'SQLITE_CONSTRAINT' || (error.message && error.message.includes('UNIQUE constraint failed: companies.name'))) {
+      return res.status(400).json({ message: 'Company name is already registered' });
+    }
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
   }
