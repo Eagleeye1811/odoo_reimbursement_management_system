@@ -15,7 +15,7 @@ const AdminBadge = () => (
 );
 
 export const UsersPage = () => {
-  const [form, setForm] = useState({ name: '', email: '', role: 'employee', manager_id: '' });
+  const [form, setForm] = useState({ name: '', email: '', role: 'employee', manager_id: '', is_manager_approver: false });
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   
@@ -43,7 +43,7 @@ export const UsersPage = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['users']);
       setToastOpen(true);
-      setForm({ name: '', email: '', role: 'employee', manager_id: '' });
+      setForm({ name: '', email: '', role: 'employee', manager_id: '', is_manager_approver: false });
       setError('');
       setShowForm(false);
     },
@@ -55,6 +55,15 @@ export const UsersPage = () => {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       await api.put(`/users/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['users']);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/users/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['users']);
@@ -98,6 +107,7 @@ export const UsersPage = () => {
               <TableHead>Role</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Manager Approver</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -147,10 +157,30 @@ export const UsersPage = () => {
                   <span className="text-sm text-[#374151]">{user.email}</span>
                 </TableCell>
                 
-                <TableCell className="text-right">
+                <TableCell>
+                  {user.role === 'employee' ? (
+                    <label className="flex items-center cursor-pointer">
+                      <div className="relative">
+                        <input type="checkbox" className="sr-only" checked={user.is_manager_approver || false} 
+                               onChange={(e) => updateMutation.mutate({ id: user.id, data: { is_manager_approver: e.target.checked } })} />
+                        <div className={`block w-10 h-6 rounded-full transition-colors ${user.is_manager_approver ? 'bg-primary' : 'bg-gray-300'}`}></div>
+                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${user.is_manager_approver ? 'translate-x-4' : ''}`}></div>
+                      </div>
+                    </label>
+                  ) : (
+                    <span className="text-text-secondary text-sm">-</span>
+                  )}
+                </TableCell>
+
+                <TableCell className="text-right flex items-center justify-end gap-2">
                   <Button variant="secondary" size="sm" onClick={() => handleSendPassword(user.id)} className="text-primary border-border hover:bg-[#EFF6FF]">
                     Send password
                   </Button>
+                  {user.role !== 'admin' && (
+                    <Button variant="secondary" size="sm" className="text-error border-border hover:bg-red-50" onClick={() => { if(window.confirm('Delete user?')) deleteMutation.mutate(user.id); }}>
+                      Delete
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -192,18 +222,39 @@ export const UsersPage = () => {
                   <option value="manager">Manager</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Manager</label>
-                <select 
-                  className="w-full rounded-xl border border-border bg-white px-4 py-2 text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-light h-10 transition-all focus:bg-[#DBEAFE]"
-                  value={form.manager_id} onChange={e => setForm({...form, manager_id: e.target.value})}
-                >
-                  <option value="">Select a manager (optional)</option>
-                  {managers.map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
-                  ))}
-                </select>
-              </div>
+              
+              {form.role === 'employee' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1">Manager</label>
+                  <select 
+                    className="w-full rounded-xl border border-border bg-white px-4 py-2 text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-light h-10 transition-all focus:bg-[#DBEAFE]"
+                    value={form.manager_id} onChange={e => setForm({...form, manager_id: e.target.value})}
+                  >
+                    <option value="">Select a manager (optional)</option>
+                    {managers.map(m => (
+                      <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {form.role === 'employee' && (
+                <div className="md:col-span-2 mt-2">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div>
+                      <p className="font-semibold text-text-primary text-sm">Manager Approval Required</p>
+                      <p className="text-xs text-text-secondary mt-1">If enabled, expenses must be approved by the assigned manager before entering the main approval chain.</p>
+                    </div>
+                    <label className="flex items-center cursor-pointer">
+                      <div className="relative">
+                        <input type="checkbox" className="sr-only" checked={form.is_manager_approver} onChange={e => setForm({...form, is_manager_approver: e.target.checked})} />
+                        <div className={`block w-10 h-6 rounded-full transition-colors ${form.is_manager_approver ? 'bg-primary' : 'bg-gray-300'}`}></div>
+                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${form.is_manager_approver ? 'translate-x-4' : ''}`}></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-text-secondary mt-2 bg-gray-50 p-2 rounded inline-block">

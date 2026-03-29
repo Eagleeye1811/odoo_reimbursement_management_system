@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { X } from 'lucide-react';
 
-export const Modal = ({ isOpen, onClose, title, children, type = 'modal' }) => {
+export const Modal = ({ isOpen, onClose, title, children, type = 'modal', className }) => {
   const overlayRef = useRef(null);
 
   useEffect(() => {
@@ -29,10 +29,10 @@ export const Modal = ({ isOpen, onClose, title, children, type = 'modal' }) => {
       />
       <div 
         className={cn(
-          "relative bg-surface shadow-2xl transition-transform w-full",
+          "relative bg-surface shadow-2xl transition-transform w-full flex flex-col",
           type === 'slide' 
-            ? "h-full max-w-md sm:translate-x-0 ml-auto animate-in slide-in-from-right" 
-            : "rounded-2xl max-w-lg m-4 animate-in zoom-in-95"
+            ? "h-full ml-auto animate-in slide-in-from-right sm:translate-x-0 " + (className || "max-w-md")
+            : "rounded-2xl m-4 animate-in zoom-in-95 " + (className || "max-w-lg")
         )}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">

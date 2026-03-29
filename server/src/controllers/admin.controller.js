@@ -215,4 +215,37 @@ async function getAllExpenses(req, res) {
   }
 }
 
-module.exports = { getStats, listChains, createChain, updateChain, deleteChain, getAllExpenses };
+async function overrideExpense(req, res) {
+  try {
+    const { id } = req.params;
+    const { action, comment } = req.body;
+    const adminId = req.user.id;
+    const companyId = req.user.companyId;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action.' });
+    }
+
+    const expenseRes = await query('SELECT * FROM expenses WHERE id = $1 AND company_id = $2', [id, companyId]);
+    if (expenseRes.rows.length === 0) return res.status(404).json({ message: 'Expense not found.' });
+
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    
+    // Update the expense status directly
+    await query('UPDATE expenses SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, id]);
+
+    // Log the override action
+    await query(
+      `INSERT INTO expense_approval_log (expense_id, approver_id, action, comments)
+       VALUES ($1, $2, $3, $4)`,
+      [id, adminId, 'ADMIN_OVERRIDE_' + action.toUpperCase(), comment || 'Admin force override']
+    );
+
+    res.json({ message: `Expense force ${newStatus} successfully.` });
+  } catch (err) {
+    console.error('Failed to override expense:', err);
+    res.status(500).json({ message: 'Internal server error during override.' });
+  }
+}
+
+module.exports = { getStats, listChains, createChain, updateChain, deleteChain, getAllExpenses, overrideExpense };

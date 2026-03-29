@@ -13,6 +13,7 @@ const userSchema = z.object({
   email: z.string().email(),
   role: z.enum(['manager', 'employee']),
   manager_id: z.string().uuid().optional().nullable(),
+  is_manager_approver: z.boolean().optional().default(false),
 });
 
 async function createUser(req, res) {
@@ -35,10 +36,10 @@ async function createUser(req, res) {
     const finalManagerId = data.role === 'employee' ? (data.manager_id || null) : null;
 
     const result = await query(
-      `INSERT INTO users (company_id, name, email, password_hash, role, manager_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, company_id, name, email, role, manager_id`,
-      [companyId, data.name, data.email, hashedPassword, data.role, finalManagerId]
+      `INSERT INTO users (company_id, name, email, password_hash, role, manager_id, is_manager_approver)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, company_id, name, email, role, manager_id, is_manager_approver`,
+      [companyId, data.name, data.email, hashedPassword, data.role, finalManagerId, data.is_manager_approver]
     );
     const newUser = result.rows[0];
 
@@ -79,7 +80,7 @@ async function listUsers(req, res) {
 async function updateUser(req, res) {
   try {
     const { id } = req.params;
-    const { role, manager_id } = req.body;
+    const { role, manager_id, is_manager_approver } = req.body;
     const companyId = req.user.companyId;
 
     const existing = await query('SELECT * FROM users WHERE id = $1 AND company_id = $2', [id, companyId]);
@@ -92,8 +93,8 @@ async function updateUser(req, res) {
       : null;
 
     await query(
-      `UPDATE users SET role = $1, manager_id = $2, updated_at = NOW() WHERE id = $3`,
-      [finalRole, finalManagerId || null, id]
+      `UPDATE users SET role = $1, manager_id = $2, is_manager_approver = COALESCE($3, is_manager_approver), updated_at = NOW() WHERE id = $4`,
+      [finalRole, finalManagerId || null, is_manager_approver, id]
     );
 
     res.json({ message: 'User updated successfully' });
@@ -125,4 +126,21 @@ async function sendPassword(req, res) {
   }
 }
 
-module.exports = { createUser, listUsers, updateUser, sendPassword };
+async function deleteUser(req, res) {
+  try {
+    const { id } = req.params;
+    const companyId = req.user.companyId;
+
+    const existing = await query('SELECT role FROM users WHERE id = $1 AND company_id = $2', [id, companyId]);
+    if (!existing.rows.length) return res.status(404).json({ message: 'User not found' });
+    if (existing.rows[0].role === 'admin') return res.status(403).json({ message: 'Cannot delete admin' });
+
+    await query('DELETE FROM users WHERE id = $1 AND company_id = $2', [id, companyId]);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+}
+
+module.exports = { createUser, listUsers, updateUser, sendPassword, deleteUser };

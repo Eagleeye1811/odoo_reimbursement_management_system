@@ -33,10 +33,39 @@ app.use('/api/approvals', approvalRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'healthy', timestamp: new Date() }));
 
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ message: 'Something went wrong!' });
+// Manager Routes
+app.get('/api/manager/approvals', (req, res) => {
+  res.json({ message: 'List of approvals' });
 });
+
+// Mock Authentication Middleware — fetch a real user from the DB
+const { query } = require('./src/utils/db');
+app.use(async (req, res, next) => {
+  try {
+    // If a real auth token was decoded upstream, skip this mock
+    if (req.user) return next();
+
+    // Otherwise grab the first employee from the DB as a stand-in
+    const result = await query(
+      `SELECT id, company_id, role FROM users ORDER BY created_at ASC LIMIT 1`
+    );
+    if (result.rows.length > 0) {
+      const u = result.rows[0];
+      req.user = { id: u.id, role: u.role, companyId: u.company_id };
+    } else {
+      // Fallback: no users in DB yet
+      req.user = null;
+    }
+    next();
+  } catch (err) {
+    console.error('Mock auth middleware error:', err.message);
+    next();
+  }
+});
+
+// Mount modular Employee Routes & Utility Routes
+app.use('/api/expenses', require('./src/routes/expense.routes'));
+app.use('/api', require('./src/routes/utility.routes')); // Mounts /api/categories & /api/currencies
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
