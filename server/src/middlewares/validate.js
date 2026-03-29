@@ -32,9 +32,10 @@ const expenseBodyRules = [
     .exists({ checkFalsy: true }).withMessage('currency is required')
     .isString().isLength({ min: 3, max: 3 }).withMessage('currency must be a valid 3-letter ISO code'),
 
-  body('categoryId')
-    .exists({ checkFalsy: true }).withMessage('categoryId is required')
-    .isUUID().withMessage('categoryId must be a valid UUID'),
+body('category')
+  .exists({ checkFalsy: true }).withMessage('category is required')
+  .isString().withMessage('category must be a string')
+  .isLength({ min: 2, max: 100 }).withMessage('category must be between 2 and 100 characters'),
 
   body('description')
     .exists({ checkFalsy: true }).withMessage('description is required')

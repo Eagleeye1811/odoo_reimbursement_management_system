@@ -2,7 +2,7 @@ import api from './api';
 
 export const getExpenses = async () => {
   const { data } = await api.get('/expenses');
-  return data.data; // Server returns { success, data, message }
+  return data.data?.expenses || data.data || []; // Ensure we always return an array
 };
 
 export const createExpense = async (expenseData) => {

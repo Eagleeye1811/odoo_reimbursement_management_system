@@ -151,8 +151,7 @@ export const ExpenseList = () => {
     date: newExpenseForm.date,
     amount: parseFloat(newExpenseForm.amount),
     currency: newExpenseForm.currency,
-    // Note: We need a category ID, you might need to fetch categories in real app, assuming UUIDs or names handled by backend mapping
-    categoryId: "bb71fece-c01d-4033-9092-f38b2ced840a", // Hardcoded mock UUID to pass body validation for now to match backend
+    category: newExpenseForm.category || 'Miscellaneous',
     vendor: newExpenseForm.vendor,
     receiptUrl: newExpenseForm.receiptUrl
   });
