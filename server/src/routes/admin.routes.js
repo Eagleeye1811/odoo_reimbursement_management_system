@@ -7,6 +7,7 @@ const {
   updateChain,
   deleteChain,
   getAllExpenses,
+  overrideExpense,
 } = require('../controllers/admin.controller');
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.use(requireAuth, requireRole(['admin']));
 
 router.get('/stats', getStats);
 router.get('/expenses', getAllExpenses);
+router.post('/expenses/:id/override', overrideExpense);
 router.get('/chains', listChains);
 router.post('/chains', createChain);
 router.put('/chains/:id', updateChain);
